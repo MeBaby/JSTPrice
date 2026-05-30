@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "OZON一键算利润",
+  "version": "1.0",
+  "description": "一键计算产品纯利润，自动读取商品页面数据",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "XYLogo.jpg",
+      "48": "XYLogo.jpg",
+      "128": "XYLogo.jpg"
+    }
+  },
+  "icons": {
+    "16": "XYLogo.jpg",
+    "48": "XYLogo.jpg",
+    "128": "XYLogo.jpg"
+  }
+}

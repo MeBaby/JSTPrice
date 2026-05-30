@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OZON一键算利润</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  width:400px;padding:10px 12px;font-family:-apple-system,BlinkMacSystemFont,'Microsoft YaHei',sans-serif;
+  font-size:14.4px;color:#333;background:#f0f2f5;overflow:hidden;
+  min-height:580px;max-height:600px;
+}
+html{overflow:hidden}
+.header{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #4f6ef6}
+.header .logo{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,#4f6ef6,#7c5cfc);
+  color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  letter-spacing:1px;flex-shrink:0;
+}
+.header h3{font-size:19.2px;color:#1a1a2e;font-weight:700}
+.section{
+  background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:6px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.04);
+}
+.section-title{
+  font-size:13.2px;font-weight:700;color:#4f6ef6;margin-bottom:6px;
+  padding-bottom:3px;border-bottom:1px dashed #e8ecf4;display:flex;align-items:center;gap:5px;
+}
+.section-title::before{content:'';display:inline-block;width:3px;height:13.2px;background:#4f6ef6;border-radius:2px}
+.info-row{display:flex;align-items:center;gap:14px;font-size:13.2px;color:#555}
+.info-row .item{display:flex;align-items:center;gap:2px;min-width:0}
+.info-row .label{color:#999;white-space:nowrap}
+.info-row .val{color:#333;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px}
+.info-row .btn-read{
+  margin-left:auto;padding:2px 9px;font-size:12px;background:#fff;color:#4f6ef6;
+  border:1px solid #4f6ef6;border-radius:12px;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.info-row .btn-read:hover{background:#4f6ef6;color:#fff}
+.col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 6px;}
+.item{display:flex;align-items:center;gap:3px;}
+.item label{font-size:12px;color:#777;white-space:nowrap;min-width:0;flex-shrink:0;}
+.item input{
+  width:100%;min-width:0;padding:4px 5px;border:1px solid #e0e4ea;border-radius:5px;
+  font-size:12px;text-align:right;outline:none;transition:border-color .15s,background .15s,box-shadow .15s;
+  color:#333;background:#fafbfc;box-sizing:border-box;
+  -webkit-appearance: none;appearance: none;
+}
+.item input::-webkit-outer-spin-button,
+.item input::-webkit-inner-spin-button {
+  -webkit-appearance: none;margin:0;
+}
+.item input:focus{border-color:#4f6ef6;background:#fff;box-shadow:0 0 0 2px rgba(79,110,246,0.1)}
+.item input.error{border-color:#f87171!important;background:#fff5f5!important;box-shadow:0 0 0 2px rgba(248,113,113,0.15)!important}
+.item .unit{font-size:12px;color:#999;min-width:14px;text-align:center;flex-shrink:0}
+.tip{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:14px;height:14px;border-radius:50%;background:#dde1ea;color:#888;
+  font-size:10.8px;font-weight:700;cursor:help;flex-shrink:0;line-height:1;
+}
+.tip:hover{background:#4f6ef6;color:#fff}
+.tooltip-wrap{position:relative;display:inline-flex;align-items:center}
+.tooltip-wrap .tooltip{
+  display:none;position:absolute;bottom:140%;left:100%;margin-left:8px;
+  background:#333;color:#fff;font-size:12px;padding:5px 9px;border-radius:5px;
+  white-space:nowrap;z-index:999;font-weight:400;
+  box-shadow:0 3px 12px rgba(0,0,0,0.25);max-width:300px;
+}
+.tooltip-wrap .tooltip::after{content:'';position:absolute;top:50%;left:-10px;transform:translateY(-50%);border:5px solid transparent;border-right-color:#333}
+.tooltip-wrap:hover .tooltip{display:block}
+.btn-row{display:flex;gap:8px;margin-bottom:6px;}
+.btn-primary{
+  flex:1;padding:8px;border:none;border-radius:7px;font-size:15.6px;font-weight:700;
+  cursor:pointer;transition:all .15s;color:#fff;
+  background:linear-gradient(135deg,#4f6ef6,#7c5cfc);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 3px 12px rgba(79,110,246,0.35)}
+.btn-primary:active{transform:scale(.97)}
+.result-section{
+  background:linear-gradient(135deg,#1a1a2e,#16213e);
+  color:#fff;border-radius:8px;padding:9px 12px;margin-bottom:6px;
+  box-shadow:0 3px 12px rgba(0,0,0,0.12);
+}
+.result-section .section-title{color:#fff;border-color:rgba(255,255,255,0.2);margin-bottom:7px;}
+.result-section .section-title::before{background:#4ade80}
+.result-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.result-row:last-child{margin-bottom:0}
+.result-label{font-size:14.4px;opacity:.9;display:flex;align-items:center;gap:4px}
+.result-val{font-weight:800;font-size:19.2px}
+.result-rate{font-weight:800;font-size:16.8px}
+.color-good{color:#4ade80}
+.color-bad{color:#f87171}
+.wechat-section{
+  background:#fff;border-radius:8px;padding:7px 12px;text-align:center;
+  box-shadow:0 1px 4px rgba(0,0,0,0.04);
+}
+.wechat-section .title{font-size:12px;color:#999;margin-bottom:3px}
+.wechat-row{display:flex;align-items:center;gap:10px;justify-content:center}
+.wechat-qr{width:135px;height:135px;border-radius:8px;border:2px solid #e8ecf4;object-fit:cover;flex-shrink:0}
+.wechat-info{text-align:left}
+.wechat-info .slogan{font-size:15.6px;font-weight:700;color:#1a1a2e;line-height:1.3;margin-bottom:2px}
+.wechat-info .wxid{font-size:13.2px;color:#4f6ef6;font-weight:600}
+.wechat-info .note{font-size:12px;color:#999;margin-top:1px}
+.status{text-align:center;font-size:12px;margin-top:3px;color:#28a745;min-height:14px}
+.status.error{color:#f87171}
+#resultWrap{display:block}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">XY</div>
+  <h3>OZON一键算利润</h3>
+</div>
+
+<div class="section">
+  <div class="section-title">商品信息</div>
+  <div class="info-row">
+    <span class="item"><span class="label">SKU ID</span>：<span class="val" id="skuId">--</span></span>
+    <span class="item"><span class="label">克重</span>：<span class="val" id="weight">--</span> g</span>
+    <button class="btn-read" id="btnRead">一键读取</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">收入与成本</div>
+  <div class="col3">
+    <div class="item">
+      <label>现价¥</label>
+      <input type="number" id="priceCny" step="0.01" placeholder="自动读" data-required="1">
+      <span class="unit">¥</span>
+    </div>
+    <div class="item">
+      <label>现价₽</label>
+      <input type="number" id="priceRub" step="0.01" placeholder="自动换" data-required="1">
+      <span class="unit">₽</span>
+    </div>
+    <div class="item">
+      <label>采购价</label>
+      <input type="number" id="purchasePrice" step="0.01" placeholder="手动填" data-required="1">
+      <span class="unit">¥</span>
+    </div>
+    <div class="item">
+      <label>头程</label>
+      <input type="number" id="intlShipping" step="0.01" placeholder="自动算" data-required="1">
+      <span class="unit">¥</span>
+      <div class="tooltip-wrap"><span class="tip">?</span><span class="tooltip" id="tipShipping">--</span></div>
+    </div>
+    <div class="item">
+      <label>佣金率</label>
+      <input type="number" id="commissionRate" step="0.1" value="13" data-required="1">
+      <span class="unit">%</span>
+    </div>
+    <div class="item">
+      <label>代理费率</label>
+      <input type="number" id="agentFeeRate" step="0.1" value="7" data-required="1">
+      <span class="unit">%</span>
+    </div>
+    <div class="item">
+      <label>退货率</label>
+      <input type="number" id="returnRate" step="0.1" value="7" data-required="1">
+      <span class="unit">%</span>
+    </div>
+    <div class="item">
+      <label>打包费</label>
+      <input type="number" id="packFee" step="0.01" value="1.50" data-required="1">
+      <span class="unit">¥</span>
+    </div>
+    <div class="item">
+      <label>尾程费</label>
+      <input type="number" id="deliveryFee" step="0.01" value="1.32" data-required="1">
+      <span class="unit">¥</span>
+    </div>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button class="btn-primary" id="calcBtn">一键算利润</button>
+</div>
+
+<div id="resultWrap">
+  <div class="result-section">
+    <div class="section-title">利润结果</div>
+    <div class="result-row">
+      <span class="result-label">
+        纯利润
+        <div class="tooltip-wrap"><span class="tip" style="background:rgba(255,255,255,.2);color:#fff">?</span><span class="tooltip" id="tipProfit">--</span></div>
+      </span>
+      <span class="result-val color-good" id="netProfit">--</span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">
+        纯利润率
+        <div class="tooltip-wrap"><span class="tip" style="background:rgba(255,255,255,.2);color:#fff">?</span><span class="tooltip" id="tipRate">--</span></div>
+      </span>
+      <span class="result-rate color-good" id="netProfitRate">--</span>
+    </div>
+  </div>
+</div>
+
+<div class="wechat-section">
+  <div class="title">--- 限时福利 ---</div>
+  <div class="wechat-row">
+    <img class="wechat-qr" src="微信fc2080fc.jpg" alt="微信二维码">
+    <div class="wechat-info">
+      <div class="slogan">一个AI为你省一个人工费，够了！！免费试用</div>
+      <div class="wxid">微信号：fc2080fc</div>
+      <div class="note">加我备注【插件】</div>
+    </div>
+  </div>
+</div>
+
+<div class="status" id="status"></div>
+
+<script src="panel.js"></script>
+</body>
+</html>
