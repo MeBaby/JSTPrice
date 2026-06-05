@@ -10,17 +10,23 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 function extractProductData(targetSku) {
   var bodyText = document.body.innerText || '';
+  var EX_RATE = 11.5;
 
   var skuId = extractSkuId(bodyText, targetSku);
   var weight = extractWeight(bodyText);
-  var priceCny = extractPriceCny(bodyText);
+  var priceInfo = extractPriceCny(bodyText);
+  var priceCny = priceInfo.value || '';
+  var priceRub = '';
 
   if (!skuId || !weight || !priceCny) {
     var detailData = extractFromDetailPage();
     if (detailData) {
       if (!skuId) skuId = detailData.skuId;
       if (!weight) weight = detailData.weight;
-      if (!priceCny) priceCny = detailData.priceCny;
+      if (!priceCny && detailData.priceCny) {
+        priceCny = detailData.priceCny;
+        priceInfo = { value: priceCny, isRuble: detailData.isRuble || false };
+      }
     }
   }
 
@@ -28,14 +34,26 @@ function extractProductData(targetSku) {
     var productData = extractProductBySku(targetSku);
     if (productData) {
       if (productData.weight) weight = productData.weight;
-      if (productData.priceCny) priceCny = productData.priceCny;
+      if (productData.priceCny) {
+        priceCny = productData.priceCny;
+        priceInfo = { value: priceCny, isRuble: productData.isRuble || false };
+      }
+    }
+  }
+
+  if (priceInfo.isRuble && priceCny) {
+    var rubVal = parseFloat(priceCny);
+    if (!isNaN(rubVal) && rubVal > 0) {
+      priceRub = rubVal.toFixed(2);
+      priceCny = (rubVal / EX_RATE).toFixed(2);
     }
   }
 
   return {
     skuId: skuId || '',
     weight: weight || '',
-    priceCny: priceCny || ''
+    priceCny: priceCny || '',
+    priceRub: priceRub || ''
   };
 }
 
@@ -57,7 +75,7 @@ function extractFromDetailPage() {
     if (match) result.weight = cleanNumber(match[1]);
   }
 
-  var priceEl = document.querySelector('[data-widget="webPrice"], [class*="webPrice"], [class*="price"], [class*="tsHeadline"]');
+  var priceEl = document.querySelector('[data-widget="webPrice"], [class*="webPrice"], [class*="price"], [class*="tsHeadline"], [class*="tsBodyControl"]');
   if (priceEl) {
     var priceText = priceEl.textContent || '';
     priceText = priceText.replace(/&thinsp;?/g, '').replace(/&nbsp;?/g, '');
@@ -65,13 +83,19 @@ function extractFromDetailPage() {
     var pm = priceText.match(/([\d\s,\.]+)\s*[¥￥₽]/);
     if (pm) {
       var num = cleanNumber(pm[1]);
-      if (num && parseFloat(num) > 0) result.priceCny = num;
+      if (num && parseFloat(num) > 0) {
+        result.priceCny = num;
+        result.isRuble = /₽/.test(pm[0]);
+      }
     }
     if (!result.priceCny) {
       pm = priceText.match(/[¥￥₽]\s*([\d\s,\.]+)/);
       if (pm) {
         var num2 = cleanNumber(pm[1]);
-        if (num2 && parseFloat(num2) > 0) result.priceCny = num2;
+        if (num2 && parseFloat(num2) > 0) {
+          result.priceCny = num2;
+          result.isRuble = /^₽/.test(pm[0]);
+        }
       }
     }
   }
@@ -237,10 +261,14 @@ function extractProductBySku(targetSku) {
   
   if (!productContainer) return null;
   
-  var priceCny = extractPriceFromContainer(productContainer);
+  var priceResult = extractPriceFromContainer(productContainer);
   var weight = extractWeightFromContainer(productContainer);
   
-  return { priceCny: priceCny, weight: weight };
+  return {
+    priceCny: priceResult ? priceResult.priceCny : '',
+    isRuble: priceResult ? priceResult.isRuble : false,
+    weight: weight
+  };
 }
 
 function findParentContainer(el) {
@@ -273,6 +301,8 @@ function extractPriceFromContainer(container) {
     '.c35_3_16-a1'
   ];
   
+  var isRuble = false;
+  
   for (var i = 0; i < priceSelectors.length; i++) {
     var els = container.querySelectorAll(priceSelectors[i]);
     for (var j = 0; j < els.length; j++) {
@@ -282,13 +312,19 @@ function extractPriceFromContainer(container) {
       var mBf = text.match(/([\d\s,\.]+)\s*[¥￥₽]/);
       if (mBf) {
         var numBf = cleanNumber(mBf[1]);
-        if (numBf && parseFloat(numBf) > 0 && parseFloat(numBf) < 100000) return numBf;
+        if (numBf && parseFloat(numBf) > 0 && parseFloat(numBf) < 100000) {
+          isRuble = /₽/.test(mBf[0]);
+          return { priceCny: numBf, isRuble: isRuble };
+        }
       }
 
       var mAf = text.match(/[¥￥₽]\s*([\d\s,\.]+)/);
       if (mAf) {
         var numAf = cleanNumber(mAf[1]);
-        if (numAf && parseFloat(numAf) > 0 && parseFloat(numAf) < 100000) return numAf;
+        if (numAf && parseFloat(numAf) > 0 && parseFloat(numAf) < 100000) {
+          isRuble = /^₽/.test(mAf[0]);
+          return { priceCny: numAf, isRuble: isRuble };
+        }
       }
     }
   }
@@ -337,21 +373,21 @@ function extractWeight(text) {
 
 function extractPriceCny(text) {
   var patterns = [
-    /售价[：:\s]*[¥￥]\s*([\d\s,\.]+)/,
-    /现价[：:\s]*[¥￥]\s*([\d\s,\.]+)/,
-    /人民币[价]*[：:\s]*[¥￥]\s*([\d\s,\.]+)/,
-    /价格[：:\s]*[¥￥]\s*([\d\s,\.]+)/,
-    /人民币售价[：:\s]*[¥￥]\s*([\d\s,\.]+)/,
-    /CNY[：:\s]*[¥￥]?\s*([\d\s,\.]+)/i,
-    /price[：:\s]*[¥￥]\s*([\d\s,\.]+)/i,
-    /([\d\s,\.]+)\s*[¥￥]/
+    /售价[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
+    /现价[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
+    /人民币[价]*[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
+    /价格[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
+    /人民币售价[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
+    /CNY[：:\s]*[¥￥₽]?\s*([\d\s,\.]+)/i,
+    /price[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/i,
+    /([\d\s,\.]+)\s*[¥￥₽]/
   ];
 
   for (var i = 0; i < patterns.length; i++) {
     var match = text.match(patterns[i]);
     if (match) {
       var num = cleanNumber(match[1]);
-      if (num && parseFloat(num) > 0) return num;
+      if (num && parseFloat(num) > 0) return { value: num, isRuble: /\s*₽/.test(match[0]) };
     }
   }
 
@@ -367,16 +403,16 @@ function extractPriceCny(text) {
     var elText = priceEls[j].textContent || '';
     elText = elText.replace(/&thinsp;?/g, '').replace(/&nbsp;?/g, '');
 
-    var mNumFirst = elText.match(/([\d\s,\.]+)\s*[¥￥]/);
+    var mNumFirst = elText.match(/([\d\s,\.]+)\s*[¥￥₽]/);
     if (mNumFirst) {
       var num = cleanNumber(mNumFirst[1]);
-      if (num && parseFloat(num) > 0) return num;
+      if (num && parseFloat(num) > 0) return { value: num, isRuble: /\s*₽/.test(mNumFirst[0]) };
     }
 
-    var mSymFirst = elText.match(/[¥￥]\s*([\d\s,\.]+)/);
+    var mSymFirst = elText.match(/[¥￥₽]\s*([\d\s,\.]+)/);
     if (mSymFirst) {
       var num2 = cleanNumber(mSymFirst[1]);
-      if (num2 && parseFloat(num2) > 0) return num2;
+      if (num2 && parseFloat(num2) > 0) return { value: num2, isRuble: /^₽/.test(mSymFirst[0]) };
     }
   }
 
@@ -384,13 +420,13 @@ function extractPriceCny(text) {
   for (var k = 0; k < allSpans.length; k++) {
     var t = (allSpans[k].textContent || '').trim();
     t = t.replace(/&thinsp;?/g, '').replace(/&nbsp;?/g, '');
-    var mx = t.match(/^[¥￥]\s*([\d\s,\.]+)$/);
+    var mx = t.match(/^[¥￥₽]\s*([\d\s,\.]+)$/);
     if (mx) {
       var n = cleanNumber(mx[1]);
       var v = parseFloat(n);
-      if (v > 0 && v < 100000) return n;
+      if (v > 0 && v < 100000) return { value: n, isRuble: mx[0].charAt(0) === '₽' };
     }
   }
 
-  return '';
+  return { value: '', isRuble: false };
 }

@@ -11,7 +11,7 @@ var deviceId = null;
 
 var REQUIRED_IDS = ['priceCny', 'priceRub', 'purchasePrice', 'intlShipping', 'commissionRate', 'agentFeeRate', 'returnRate', 'packFee', 'deliveryFee'];
 
-const API_BASE = 'http://202.182.102.2:3600';
+const API_BASE = 'http://202.182.102.2:3001';
 const API_KEY = 'xk_ab5f81da4a8db6c6da1a8d64444881a22f209fcb4981955741f5de3bd5d35742';
 
 function $(id) { return document.getElementById(id); }
@@ -295,7 +295,10 @@ function fillProductInfo(data) {
     updateShippingTooltip();
   }
 
-  if (data.priceCny && parseFloat(data.priceCny) > 0) {
+  if (data.priceRub && parseFloat(data.priceRub) > 0) {
+    $('priceRub').value = parseFloat(data.priceRub);
+    syncFromRub();
+  } else if (data.priceCny && parseFloat(data.priceCny) > 0) {
     $('priceCny').value = parseFloat(data.priceCny);
     syncFromCny();
   } else {
