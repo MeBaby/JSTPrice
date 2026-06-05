@@ -80,21 +80,21 @@ function extractFromDetailPage() {
     var priceText = priceEl.textContent || '';
     priceText = priceText.replace(/&thinsp;?/g, '').replace(/&nbsp;?/g, '');
 
-    var pm = priceText.match(/([\d\s,\.]+)\s*[¥￥₽]/);
+    var pm = priceText.match(/([\d\s,\.]+)\s*[¥￥₽рР]/);
     if (pm) {
       var num = cleanNumber(pm[1]);
       if (num && parseFloat(num) > 0) {
         result.priceCny = num;
-        result.isRuble = /₽/.test(pm[0]);
+        result.isRuble = /[₽рР]/.test(pm[0]);
       }
     }
     if (!result.priceCny) {
-      pm = priceText.match(/[¥￥₽]\s*([\d\s,\.]+)/);
+      pm = priceText.match(/[¥￥₽рР]\s*([\d\s,\.]+)/);
       if (pm) {
         var num2 = cleanNumber(pm[1]);
         if (num2 && parseFloat(num2) > 0) {
           result.priceCny = num2;
-          result.isRuble = /^₽/.test(pm[0]);
+          result.isRuble = /^[₽рР]/.test(pm[0]);
         }
       }
     }
@@ -309,20 +309,20 @@ function extractPriceFromContainer(container) {
       var text = els[j].textContent || '';
       text = text.replace(/&thinsp;?/g, '').replace(/&nbsp;?/g, '');
 
-      var mBf = text.match(/([\d\s,\.]+)\s*[¥￥₽]/);
+      var mBf = text.match(/([\d\s,\.]+)\s*[¥￥₽рР]/);
       if (mBf) {
         var numBf = cleanNumber(mBf[1]);
         if (numBf && parseFloat(numBf) > 0 && parseFloat(numBf) < 100000) {
-          isRuble = /₽/.test(mBf[0]);
+          isRuble = /[₽рР]/.test(mBf[0]);
           return { priceCny: numBf, isRuble: isRuble };
         }
       }
 
-      var mAf = text.match(/[¥￥₽]\s*([\d\s,\.]+)/);
+      var mAf = text.match(/[¥￥₽рР]\s*([\d\s,\.]+)/);
       if (mAf) {
         var numAf = cleanNumber(mAf[1]);
         if (numAf && parseFloat(numAf) > 0 && parseFloat(numAf) < 100000) {
-          isRuble = /^₽/.test(mAf[0]);
+          isRuble = /^[₽рР]/.test(mAf[0]);
           return { priceCny: numAf, isRuble: isRuble };
         }
       }
@@ -373,21 +373,21 @@ function extractWeight(text) {
 
 function extractPriceCny(text) {
   var patterns = [
-    /售价[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
-    /现价[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
-    /人民币[价]*[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
-    /价格[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
-    /人民币售价[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/,
-    /CNY[：:\s]*[¥￥₽]?\s*([\d\s,\.]+)/i,
-    /price[：:\s]*[¥￥₽]\s*([\d\s,\.]+)/i,
-    /([\d\s,\.]+)\s*[¥￥₽]/
+    /售价[：:\s]*[¥￥₽рР]\s*([\d\s,\.]+)/,
+    /现价[：:\s]*[¥￥₽рР]\s*([\d\s,\.]+)/,
+    /人民币[价]*[：:\s]*[¥￥₽рР]\s*([\d\s,\.]+)/,
+    /价格[：:\s]*[¥￥₽рР]\s*([\d\s,\.]+)/,
+    /人民币售价[：:\s]*[¥￥₽рР]\s*([\d\s,\.]+)/,
+    /CNY[：:\s]*[¥￥₽рР]?\s*([\d\s,\.]+)/i,
+    /price[：:\s]*[¥￥₽рР]\s*([\d\s,\.]+)/i,
+    /([\d\s,\.]+)\s*[¥￥₽рР]/
   ];
 
   for (var i = 0; i < patterns.length; i++) {
     var match = text.match(patterns[i]);
     if (match) {
       var num = cleanNumber(match[1]);
-      if (num && parseFloat(num) > 0) return { value: num, isRuble: /\s*₽/.test(match[0]) };
+      if (num && parseFloat(num) > 0) return { value: num, isRuble: /[₽рР]/.test(match[0]) };
     }
   }
 
@@ -403,16 +403,16 @@ function extractPriceCny(text) {
     var elText = priceEls[j].textContent || '';
     elText = elText.replace(/&thinsp;?/g, '').replace(/&nbsp;?/g, '');
 
-    var mNumFirst = elText.match(/([\d\s,\.]+)\s*[¥￥₽]/);
+    var mNumFirst = elText.match(/([\d\s,\.]+)\s*[¥￥₽рР]/);
     if (mNumFirst) {
       var num = cleanNumber(mNumFirst[1]);
-      if (num && parseFloat(num) > 0) return { value: num, isRuble: /\s*₽/.test(mNumFirst[0]) };
+      if (num && parseFloat(num) > 0) return { value: num, isRuble: /[₽рР]/.test(mNumFirst[0]) };
     }
 
-    var mSymFirst = elText.match(/[¥￥₽]\s*([\d\s,\.]+)/);
+    var mSymFirst = elText.match(/[¥￥₽рР]\s*([\d\s,\.]+)/);
     if (mSymFirst) {
       var num2 = cleanNumber(mSymFirst[1]);
-      if (num2 && parseFloat(num2) > 0) return { value: num2, isRuble: /^₽/.test(mSymFirst[0]) };
+      if (num2 && parseFloat(num2) > 0) return { value: num2, isRuble: /^[₽рР]/.test(mSymFirst[0]) };
     }
   }
 
@@ -420,11 +420,11 @@ function extractPriceCny(text) {
   for (var k = 0; k < allSpans.length; k++) {
     var t = (allSpans[k].textContent || '').trim();
     t = t.replace(/&thinsp;?/g, '').replace(/&nbsp;?/g, '');
-    var mx = t.match(/^[¥￥₽]\s*([\d\s,\.]+)$/);
+    var mx = t.match(/^[¥￥₽рР]\s*([\d\s,\.]+)$/);
     if (mx) {
       var n = cleanNumber(mx[1]);
       var v = parseFloat(n);
-      if (v > 0 && v < 100000) return { value: n, isRuble: mx[0].charAt(0) === '₽' };
+      if (v > 0 && v < 100000) return { value: n, isRuble: /[₽рР]/.test(mx[0]) };
     }
   }
 
