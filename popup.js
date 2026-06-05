@@ -11,7 +11,8 @@ var deviceId = null;
 
 var REQUIRED_IDS = ['priceCny', 'priceRub', 'purchasePrice', 'intlShipping', 'commissionRate', 'agentFeeRate', 'returnRate', 'packFee', 'deliveryFee'];
 
-const API_BASE = 'http://localhost:3001/api/activation';
+const API_BASE = 'http://202.182.102.2:3600';
+const API_KEY = 'xk_ab5f81da4a8db6c6da1a8d64444881a22f209fcb4981955741f5de3bd5d35742';
 
 function $(id) { return document.getElementById(id); }
 
@@ -20,35 +21,40 @@ function getVal(id) {
   return isNaN(v) ? 0 : v;
 }
 
-function getDeviceId() {
+async function getDeviceId() {
   if (deviceId) return deviceId;
-  deviceId = localStorage.getItem('device_id');
+  var result = await chrome.storage.local.get('device_id');
+  deviceId = result.device_id;
   if (!deviceId) {
-    deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('device_id', deviceId);
+    deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    await chrome.storage.local.set({ device_id: deviceId });
   }
   return deviceId;
 }
 
 async function checkActivation() {
-  const savedCode = localStorage.getItem('activation_code');
-  if (!savedCode) return false;
+  var savedCode = await chrome.storage.local.get('activation_code');
+  if (!savedCode.activation_code) return false;
 
-  const freeTrialUsed = localStorage.getItem('free_trial_used');
-  if (freeTrialUsed) {
-    const expireDate = new Date(localStorage.getItem('activation_expire'));
+  var freeTrialUsed = await chrome.storage.local.get('free_trial_used');
+  if (freeTrialUsed.free_trial_used) {
+    var expireInfo = await chrome.storage.local.get('activation_expire');
+    var expireDate = new Date(expireInfo.activation_expire);
     if (expireDate > new Date()) {
-      showExpireInfo(localStorage.getItem('activation_expire'));
+      showExpireInfo(expireInfo.activation_expire);
       return true;
     }
   }
 
   try {
-    const response = await fetch(`${API_BASE}/check?code=${encodeURIComponent(savedCode)}&deviceId=${encodeURIComponent(getDeviceId())}`);
-    const data = await response.json();
+    var devId = await getDeviceId();
+    var response = await fetch(`${API_BASE}/api/activation/status?device_id=${encodeURIComponent(devId)}`, {
+      headers: { 'Authorization': `Bearer ${API_KEY}` }
+    });
+    var data = await response.json();
     
-    if (data.success && data.activated) {
-      showExpireInfo(data.expireDate);
+    if (data.success && data.data && data.data.activated) {
+      showExpireInfo(data.data.expire_date);
       return true;
     }
     return false;
@@ -60,20 +66,24 @@ async function checkActivation() {
 
 async function activate(code) {
   try {
-    const response = await fetch(`${API_BASE}/activate`, {
+    var devId = await getDeviceId();
+    var response = await fetch(`${API_BASE}/api/activation/activate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code.toUpperCase(), deviceId: getDeviceId() })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({ code: code.toUpperCase(), device_id: devId })
     });
-    const data = await response.json();
+    var data = await response.json();
     
     if (data.success) {
-      localStorage.setItem('activation_code', code.toUpperCase());
-      localStorage.setItem('activation_expire', data.expireDate);
-      showExpireInfo(data.expireDate);
-      return { success: true, message: data.message };
+      await chrome.storage.local.set({ activation_code: code.toUpperCase() });
+      await chrome.storage.local.set({ activation_expire: data.data.expire_date });
+      showExpireInfo(data.data.expire_date);
+      return { success: true, message: data.message || '激活成功' };
     } else {
-      return { success: false, message: data.message };
+      return { success: false, message: data.message || '激活失败' };
     }
   } catch (e) {
     console.error('Activate error:', e);
@@ -81,9 +91,9 @@ async function activate(code) {
   }
 }
 
-function activateFreeTrial() {
-  const freeTrialUsed = localStorage.getItem('free_trial_used');
-  if (freeTrialUsed) {
+async function activateFreeTrial() {
+  var freeTrialUsed = await chrome.storage.local.get('free_trial_used');
+  if (freeTrialUsed.free_trial_used) {
     $('freeTrialStatus').textContent = '当前设备已领取过免费试用';
     return;
   }
@@ -92,9 +102,10 @@ function activateFreeTrial() {
   expireDate.setDate(expireDate.getDate() + 3);
   var expireDateStr = expireDate.toISOString().split('T')[0];
 
-  localStorage.setItem('activation_code', 'FREE_TRIAL_' + getDeviceId());
-  localStorage.setItem('activation_expire', expireDateStr);
-  localStorage.setItem('free_trial_used', '1');
+  var devId = await getDeviceId();
+  await chrome.storage.local.set({ activation_code: 'FREE_TRIAL_' + devId });
+  await chrome.storage.local.set({ activation_expire: expireDateStr });
+  await chrome.storage.local.set({ free_trial_used: '1' });
 
   $('freeTrialStatus').textContent = '免费试用3天已激活！';
   $('freeTrialStatus').style.color = '#28a745';
@@ -103,17 +114,18 @@ function activateFreeTrial() {
 
   showExpireInfo(expireDateStr);
 
-  setTimeout(() => {
+  setTimeout(function() {
     $('activationWrap').style.display = 'none';
     $('mainWrap').style.display = 'block';
     initMain();
   }, 1000);
 }
 
-function checkFreeTrialStatus() {
-  const freeTrialUsed = localStorage.getItem('free_trial_used');
-  if (freeTrialUsed) {
-    var expireDate = new Date(localStorage.getItem('activation_expire'));
+async function checkFreeTrialStatus() {
+  var freeTrialUsed = await chrome.storage.local.get('free_trial_used');
+  if (freeTrialUsed.free_trial_used) {
+    var expireInfo = await chrome.storage.local.get('activation_expire');
+    var expireDate = new Date(expireInfo.activation_expire);
     if (expireDate > new Date()) {
       $('btnFreeTrial').classList.add('used');
       $('btnFreeTrial').textContent = '已领取';
@@ -137,13 +149,13 @@ function showActivateStatus(message, isError) {
 }
 
 async function initActivation() {
-  const isActivated = await checkActivation();
+  var isActivated = await checkActivation();
   if (isActivated) {
     $('activationWrap').style.display = 'none';
     $('mainWrap').style.display = 'block';
     initMain();
   } else {
-    checkFreeTrialStatus();
+    await checkFreeTrialStatus();
   }
 }
 
@@ -443,8 +455,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  $('btnFreeTrial').addEventListener('click', function() {
-    activateFreeTrial();
+  $('btnFreeTrial').addEventListener('click', async function() {
+    await activateFreeTrial();
   });
 
   $('activationCode').addEventListener('keyup', function(e) {
